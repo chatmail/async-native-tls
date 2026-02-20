@@ -31,7 +31,7 @@ where
     }
 }
 
-#[cfg(feature = "runtime-async-std")]
+#[cfg(feature = "runtime-smol")]
 impl<S> Read for StdAdapter<S>
 where
     S: AsyncRead + Unpin,

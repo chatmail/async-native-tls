@@ -53,15 +53,15 @@ $ cargo add async-native-tls
 
 #### Cargo Feature Flags
 
- * `runtime-async-std` (on by default): Use the `async-std` runtime.
+ * `runtime-smol` (on by default): Use the `smol` runtime.
 
- * `runtime-tokio`: Use the `tokio` runtime. This is mutually exclusive with `runtime-async-std`.
+ * `runtime-tokio`: Use the `tokio` runtime. This is mutually exclusive with `runtime-smol`.
 
 ## Example
 
-#### async-std
+#### smol
 
-> Requires `runtime-async-std` feature (on by default).
+> Requires `runtime-smol` feature (on by default).
 
 ```toml
 # Cargo.toml
@@ -70,8 +70,8 @@ async-native-tls = "0.4"
 ```
 
 ```rust
-use async_std::prelude::*;
-use async_std::net::TcpStream;
+use smol::prelude::*;
+use smol::net::TcpStream;
 
 let stream = TcpStream::connect("google.com:443").await?;
 let mut stream = async_native_tls::connect("google.com", stream).await?;
