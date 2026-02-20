@@ -22,7 +22,7 @@ cfg_if! {
                  not(target_os = "windows"),
                  not(target_os = "ios")))] {
         fn verify_failed(err: &Error) {
-            assert!(format!("{}", err).contains("certificate verify failed"))
+            assert!(err.to_string().contains("certificate verify failed"), "Error {} does not contain expected string", err)
         }
 
         use verify_failed as assert_expired_error;
@@ -32,11 +32,17 @@ cfg_if! {
     } else if #[cfg(any(target_os = "macos", target_os = "ios"))] {
 
         fn assert_invalid_cert_chain(err: &Error) {
-            assert!(format!("{}", err).contains("was not trusted."))
+            assert!(err.to_string().contains("was not trusted."), "Error {} does not contain expected string", err)
         }
 
-        use crate::assert_invalid_cert_chain as assert_expired_error;
-        use crate::assert_invalid_cert_chain as assert_wrong_host;
+        fn assert_expired_error(err: &Error) {
+            assert!(err.to_string().contains("expired certificate"), "Error {} does not contain expected string", err)
+        }
+
+        fn assert_wrong_host(err: &Error) {
+            assert!(err.to_string().contains("host name mismatch"), "Error {} does not contain expected string", err)
+        }
+
         use crate::assert_invalid_cert_chain as assert_self_signed;
         use crate::assert_invalid_cert_chain as assert_untrusted_root;
     } else {
