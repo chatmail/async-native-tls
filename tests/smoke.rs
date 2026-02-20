@@ -5,16 +5,15 @@ use std::marker::Unpin;
 use std::process::Command;
 use std::ptr;
 
-use async_std::io;
-use async_std::net::{TcpListener, TcpStream};
-use async_std::prelude::*;
 use cfg_if::cfg_if;
 use env_logger;
 use futures::join;
-use futures::stream::StreamExt;
 use futures::AsyncWrite;
 use native_tls;
 use native_tls::{Identity, TlsAcceptor};
+use smol::io;
+use smol::net::{TcpListener, TcpStream};
+use smol::prelude::*;
 
 macro_rules! t {
     ($e:expr) => {
@@ -424,111 +423,117 @@ async fn copy_data<W: AsyncWrite + Unpin>(mut w: W) -> Result<usize, io::Error> 
     Ok(amt)
 }
 
-#[async_std::test]
-async fn client_to_server() {
+#[test]
+fn client_to_server() {
     drop(env_logger::try_init());
 
-    // Create a server listening on a port, then figure out what that port is
-    let srv = t!(TcpListener::bind("127.0.0.1:0").await);
-    let addr = t!(srv.local_addr());
+    smol::block_on(async {
+        // Create a server listening on a port, then figure out what that port is
+        let srv = t!(TcpListener::bind("127.0.0.1:0").await);
+        let addr = t!(srv.local_addr());
 
-    let (server_cx, client_cx) = contexts();
+        let (server_cx, client_cx) = contexts();
 
-    // Create a future to accept one socket, connect the ssl stream, and then
-    // read all the data from it.
-    let server = async move {
-        let mut incoming = srv.incoming();
-        let socket = t!(incoming.next().await.unwrap());
-        let mut socket = t!(server_cx.accept(socket).await);
-        let mut data = Vec::new();
-        t!(socket.read_to_end(&mut data).await);
-        data
-    };
+        // Create a future to accept one socket, connect the ssl stream, and then
+        // read all the data from it.
+        let server = async move {
+            let mut incoming = srv.incoming();
+            let socket = t!(incoming.next().await.unwrap());
+            let mut socket = t!(server_cx.accept(socket).await);
+            let mut data = Vec::new();
+            t!(socket.read_to_end(&mut data).await);
+            data
+        };
 
-    // Create a future to connect to our server, connect the ssl stream, and
-    // then write a bunch of data to it.
-    let client = async move {
-        let socket = t!(TcpStream::connect(&addr).await);
-        let socket = t!(client_cx.connect("localhost", socket).await);
-        copy_data(socket).await
-    };
+        // Create a future to connect to our server, connect the ssl stream, and
+        // then write a bunch of data to it.
+        let client = async move {
+            let socket = t!(TcpStream::connect(&addr).await);
+            let socket = t!(client_cx.connect("localhost", socket).await);
+            copy_data(socket).await
+        };
 
-    // Finally, run everything!
-    let (data, _) = join!(server, client);
-    // assert_eq!(amt, AMT);
-    assert!(data == vec![9; AMT]);
+        // Finally, run everything!
+        let (data, _) = join!(server, client);
+        // assert_eq!(amt, AMT);
+        assert!(data == vec![9; AMT]);
+    })
 }
 
-#[async_std::test]
-async fn server_to_client() {
+#[test]
+fn server_to_client() {
     drop(env_logger::try_init());
 
-    // Create a server listening on a port, then figure out what that port is
-    let srv = t!(TcpListener::bind("127.0.0.1:0").await);
-    let addr = t!(srv.local_addr());
+    smol::block_on(async {
+        // Create a server listening on a port, then figure out what that port is
+        let srv = t!(TcpListener::bind("127.0.0.1:0").await);
+        let addr = t!(srv.local_addr());
 
-    let (server_cx, client_cx) = contexts();
+        let (server_cx, client_cx) = contexts();
 
-    let server = async move {
-        let mut incoming = srv.incoming();
-        let socket = t!(incoming.next().await.unwrap());
-        let socket = t!(server_cx.accept(socket).await);
-        copy_data(socket).await
-    };
+        let server = async move {
+            let mut incoming = srv.incoming();
+            let socket = t!(incoming.next().await.unwrap());
+            let socket = t!(server_cx.accept(socket).await);
+            copy_data(socket).await
+        };
 
-    let client = async move {
-        let socket = t!(TcpStream::connect(&addr).await);
-        let mut socket = t!(client_cx.connect("localhost", socket).await);
-        let mut data = Vec::new();
-        t!(socket.read_to_end(&mut data).await);
-        data
-    };
+        let client = async move {
+            let socket = t!(TcpStream::connect(&addr).await);
+            let mut socket = t!(client_cx.connect("localhost", socket).await);
+            let mut data = Vec::new();
+            t!(socket.read_to_end(&mut data).await);
+            data
+        };
 
-    // Finally, run everything!
-    let (_, data) = join!(server, client);
-    // assert_eq!(amt, AMT);
-    assert!(data == vec![9; AMT]);
+        // Finally, run everything!
+        let (_, data) = join!(server, client);
+        // assert_eq!(amt, AMT);
+        assert!(data == vec![9; AMT]);
+    })
 }
 
-#[async_std::test]
-async fn one_byte_at_a_time() {
+#[test]
+fn one_byte_at_a_time() {
     const AMT: usize = 1024;
     drop(env_logger::try_init());
 
-    let srv = t!(TcpListener::bind("127.0.0.1:0").await);
-    let addr = t!(srv.local_addr());
+    smol::block_on(async {
+        let srv = t!(TcpListener::bind("127.0.0.1:0").await);
+        let addr = t!(srv.local_addr());
 
-    let (server_cx, client_cx) = contexts();
+        let (server_cx, client_cx) = contexts();
 
-    let server = async move {
-        let mut incoming = srv.incoming();
-        let socket = t!(incoming.next().await.unwrap());
-        let mut socket = t!(server_cx.accept(socket).await);
-        let mut amt = 0;
-        for b in std::iter::repeat(9).take(AMT) {
-            let data = [b as u8];
-            t!(socket.write_all(&data).await);
-            amt += 1;
-        }
-        amt
-    };
-
-    let client = async move {
-        let socket = t!(TcpStream::connect(&addr).await);
-        let mut socket = t!(client_cx.connect("localhost", socket).await);
-        let mut data = Vec::new();
-        loop {
-            let mut buf = [0; 1];
-            match socket.read_exact(&mut buf).await {
-                Ok(_) => data.extend_from_slice(&buf),
-                Err(ref err) if err.kind() == std::io::ErrorKind::UnexpectedEof => break,
-                Err(err) => panic!("{}", err),
+        let server = async move {
+            let mut incoming = srv.incoming();
+            let socket = t!(incoming.next().await.unwrap());
+            let mut socket = t!(server_cx.accept(socket).await);
+            let mut amt = 0;
+            for b in std::iter::repeat(9).take(AMT) {
+                let data = [b as u8];
+                t!(socket.write_all(&data).await);
+                amt += 1;
             }
-        }
-        data
-    };
+            amt
+        };
 
-    let (amt, data) = join!(server, client);
-    assert_eq!(amt, AMT);
-    assert!(data == vec![9; AMT as usize]);
+        let client = async move {
+            let socket = t!(TcpStream::connect(&addr).await);
+            let mut socket = t!(client_cx.connect("localhost", socket).await);
+            let mut data = Vec::new();
+            loop {
+                let mut buf = [0; 1];
+                match socket.read_exact(&mut buf).await {
+                    Ok(_) => data.extend_from_slice(&buf),
+                    Err(ref err) if err.kind() == std::io::ErrorKind::UnexpectedEof => break,
+                    Err(err) => panic!("{}", err),
+                }
+            }
+            data
+        };
+
+        let (amt, data) = join!(server, client);
+        assert_eq!(amt, AMT);
+        assert!(data == vec![9; AMT as usize]);
+    })
 }

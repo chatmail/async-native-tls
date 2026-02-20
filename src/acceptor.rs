@@ -11,12 +11,12 @@ use crate::TlsStream;
 /// # Example
 ///
 /// ```no_run
-/// # #[cfg(feature = "runtime-async-std")]
-/// # fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync + 'static>> { async_std::task::block_on(async {
+/// # #[cfg(feature = "runtime-smol")]
+/// # fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync + 'static>> { smol::block_on(async {
 /// #
-/// use async_std::prelude::*;
-/// use async_std::net::TcpListener;
-/// use async_std::fs::File;
+/// use smol::prelude::*;
+/// use smol::net::TcpListener;
+/// use smol::fs::File;
 /// use async_native_tls::TlsAcceptor;
 ///
 /// let key = File::open("tests/identity.pfx").await?;
@@ -27,7 +27,7 @@ use crate::TlsStream;
 /// while let Some(stream) = incoming.next().await {
 ///     let acceptor = acceptor.clone();
 ///     let stream = stream?;
-///     async_std::task::spawn(async move {
+///     smol::spawn(async move {
 ///         let stream = acceptor.accept(stream).await.unwrap();
 ///         // handle stream here
 ///     });
@@ -96,39 +96,43 @@ impl From<native_tls::TlsAcceptor> for TlsAcceptor {
     }
 }
 
-#[cfg(all(test, feature = "runtime-async-std"))]
+#[cfg(all(test, feature = "runtime-smol"))]
 mod tests {
     use super::*;
     use crate::runtime::AsyncWriteExt;
     use crate::TlsConnector;
-    use async_std::fs::File;
-    use async_std::net::{TcpListener, TcpStream};
-    use async_std::stream::StreamExt;
+    use smol::fs::File;
+    use smol::net::{TcpListener, TcpStream};
+    use smol::stream::StreamExt;
 
-    #[async_std::test]
-    async fn test_acceptor() {
-        let key = File::open("tests/identity.pfx").await.unwrap();
-        let acceptor = TlsAcceptor::new(key, "hello").await.unwrap();
-        let listener = TcpListener::bind("127.0.0.1:8443").await.unwrap();
-        async_std::task::spawn(async move {
-            let mut incoming = listener.incoming();
+    #[test]
+    fn test_acceptor() {
+        smol::block_on(async {
+            let key = File::open("tests/identity.pfx").await.unwrap();
+            let acceptor = TlsAcceptor::new(key, "hello").await.unwrap();
+            let listener = TcpListener::bind("127.0.0.1:8443").await.unwrap();
+            smol::spawn(async move {
+                let mut incoming = listener.incoming();
 
-            while let Some(stream) = incoming.next().await {
-                let acceptor = acceptor.clone();
-                let stream = stream.unwrap();
-                async_std::task::spawn(async move {
-                    let mut stream = acceptor.accept(stream).await.unwrap();
-                    stream.write_all(b"hello").await.unwrap();
-                });
-            }
-        });
+                while let Some(stream) = incoming.next().await {
+                    let acceptor = acceptor.clone();
+                    let stream = stream.unwrap();
+                    smol::spawn(async move {
+                        let mut stream = acceptor.accept(stream).await.unwrap();
+                        stream.write_all(b"hello").await.unwrap();
+                    })
+                    .detach();
+                }
+            })
+            .detach();
 
-        let stream = TcpStream::connect("127.0.01:8443").await.unwrap();
-        let connector = TlsConnector::new().danger_accept_invalid_certs(true);
+            let stream = TcpStream::connect("127.0.01:8443").await.unwrap();
+            let connector = TlsConnector::new().danger_accept_invalid_certs(true);
 
-        let mut stream = connector.connect("127.0.0.1", stream).await.unwrap();
-        let mut res = Vec::new();
-        stream.read_to_end(&mut res).await.unwrap();
-        assert_eq!(res, b"hello");
+            let mut stream = connector.connect("127.0.0.1", stream).await.unwrap();
+            let mut res = Vec::new();
+            stream.read_to_end(&mut res).await.unwrap();
+            assert_eq!(res, b"hello");
+        })
     }
 }

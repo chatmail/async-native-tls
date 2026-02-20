@@ -12,11 +12,11 @@
 //! To connect as a client to a remote server:
 //!
 //! ```rust
-//! # #[cfg(feature = "runtime-async-std")]
-//! # fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync + 'static>> { async_std::task::block_on(async {
+//! # #[cfg(feature = "runtime-smol")]
+//! # fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync + 'static>> { smol::block_on(async {
 //! #
-//! use async_std::prelude::*;
-//! use async_std::net::TcpStream;
+//! use smol::prelude::*;
+//! use smol::net::TcpStream;
 //!
 //! let stream = TcpStream::connect("google.com:443").await?;
 //! let mut stream = async_native_tls::connect("google.com", stream).await?;
@@ -31,11 +31,11 @@
 //! # fn main() {}
 //! ```
 
-#[cfg(not(any(feature = "runtime-tokio", feature = "runtime-async-std")))]
-compile_error!("one of 'runtime-async-std' or 'runtime-tokio' features must be enabled");
+#[cfg(not(any(feature = "runtime-tokio", feature = "runtime-smol")))]
+compile_error!("one of 'runtime-smol' or 'runtime-tokio' features must be enabled");
 
-#[cfg(all(feature = "runtime-tokio", feature = "runtime-async-std"))]
-compile_error!("only one of 'runtime-async-std' or 'runtime-tokio' features must be enabled");
+#[cfg(all(feature = "runtime-tokio", feature = "runtime-smol"))]
+compile_error!("only one of 'runtime-smol' or 'runtime-tokio' features must be enabled");
 
 mod acceptor;
 mod connector;
@@ -63,12 +63,12 @@ mod accept {
     /// # Example
     ///
     /// ```no_run
-    /// # #[cfg(feature = "runtime-async-std")]
-    /// # fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync + 'static>> { async_std::task::block_on(async {
+    /// # #[cfg(feature = "runtime-smol")]
+    /// # fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync + 'static>> { smol::block_on(async {
     /// #
-    /// use async_std::prelude::*;
-    /// use async_std::net::TcpListener;
-    /// use async_std::fs::File;
+    /// use smol::prelude::*;
+    /// use smol::net::TcpListener;
+    /// use smol::fs::File;
     ///
     /// let listener = TcpListener::bind("0.0.0.0:8443").await?;
     /// let (stream, _addr) = listener.accept().await?;
@@ -168,11 +168,11 @@ mod connect {
     /// # Examples
     ///
     /// ```
-    /// # #[cfg(feature = "runtime-async-std")]
-    /// # fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync + 'static>> { async_std::task::block_on(async {
+    /// # #[cfg(feature = "runtime-smol")]
+    /// # fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync + 'static>> { smol::block_on(async {
     /// #
-    /// use async_std::prelude::*;
-    /// use async_std::net::TcpStream;
+    /// use smol::prelude::*;
+    /// use smol::net::TcpStream;
     ///
     /// let stream = TcpStream::connect("google.com:443").await?;
     /// let mut stream = async_native_tls::connect("google.com", stream).await?;
@@ -199,11 +199,11 @@ mod connect {
     /// # Examples
     ///
     /// ```
-    /// # #[cfg(feature = "runtime-async-std")]
-    /// # fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync + 'static>> { async_std::task::block_on(async {
+    /// # #[cfg(feature = "runtime-smol")]
+    /// # fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync + 'static>> { smol::block_on(async {
     /// #
-    /// use async_std::prelude::*;
-    /// use async_std::net::TcpStream;
+    /// use smol::prelude::*;
+    /// use smol::net::TcpStream;
     /// use async_native_tls::TlsConnector;
     ///
     /// let stream = TcpStream::connect("google.com:443").await?;
@@ -325,11 +325,11 @@ mod connect {
         /// # Examples
         ///
         /// ```
-        /// # #[cfg(feature = "runtime-async-std")]
-        /// # fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync + 'static>> { async_std::task::block_on(async {
+        /// # #[cfg(feature = "runtime-smol")]
+        /// # fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync + 'static>> { smol::block_on(async {
         /// #
-        /// use async_std::prelude::*;
-        /// use async_std::net::TcpStream;
+        /// use smol::prelude::*;
+        /// use smol::net::TcpStream;
         /// use async_native_tls::TlsConnector;
         ///
         /// let stream = TcpStream::connect("google.com:443").await?;

@@ -1,7 +1,7 @@
-#[cfg(feature = "runtime-async-std")]
+#[cfg(feature = "runtime-smol")]
 pub(crate) use futures_util::io::{AsyncRead, AsyncWrite};
 
-#[cfg(feature = "runtime-async-std")]
+#[cfg(feature = "runtime-smol")]
 #[allow(unused_imports)]
 pub(crate) use futures_util::io::{AsyncReadExt, AsyncWriteExt};
 

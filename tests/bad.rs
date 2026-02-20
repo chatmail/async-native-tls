@@ -4,9 +4,9 @@ use std::io::{self, Error};
 use std::net::ToSocketAddrs;
 
 use async_native_tls::TlsConnector;
-use async_std::net::TcpStream;
 use cfg_if::cfg_if;
 use env_logger;
+use smol::net::TcpStream;
 
 macro_rules! t {
     ($e:expr) => {
@@ -59,39 +59,41 @@ cfg_if! {
     }
 }
 
-async fn get_host(host: &'static str) -> Error {
+fn get_host(host: &'static str) -> Error {
     drop(env_logger::try_init());
 
     let addr = format!("{}:443", host);
     let addr = t!(addr.to_socket_addrs()).next().unwrap();
 
-    let socket = t!(TcpStream::connect(&addr).await);
-    let cx = TlsConnector::new();
-    let res = cx
-        .connect(host, socket)
-        .await
-        .map_err(|e| Error::new(io::ErrorKind::Other, e));
+    smol::block_on(async {
+        let socket = t!(TcpStream::connect(&addr).await);
+        let cx = TlsConnector::new();
+        let res = cx
+            .connect(host, socket)
+            .await
+            .map_err(|e| Error::new(io::ErrorKind::Other, e));
 
-    assert!(res.is_err());
-    res.err().unwrap()
+        assert!(res.is_err());
+        res.err().unwrap()
+    })
 }
 
-#[async_std::test]
-async fn expired() {
-    assert_expired_error(&get_host("expired.badssl.com").await)
+#[test]
+fn expired() {
+    assert_expired_error(&get_host("expired.badssl.com"))
 }
 
-#[async_std::test]
-async fn wrong_host() {
-    assert_wrong_host(&get_host("wrong.host.badssl.com").await)
+#[test]
+fn wrong_host() {
+    assert_wrong_host(&get_host("wrong.host.badssl.com"))
 }
 
-#[async_std::test]
-async fn self_signed() {
-    assert_self_signed(&get_host("self-signed.badssl.com").await)
+#[test]
+fn self_signed() {
+    assert_self_signed(&get_host("self-signed.badssl.com"))
 }
 
-#[async_std::test]
-async fn untrusted_root() {
-    assert_untrusted_root(&get_host("untrusted-root.badssl.com").await)
+#[test]
+fn untrusted_root() {
+    assert_untrusted_root(&get_host("untrusted-root.badssl.com"))
 }

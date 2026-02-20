@@ -74,7 +74,7 @@ impl<S> TlsStream<S> {
     }
 }
 
-#[cfg(feature = "runtime-async-std")]
+#[cfg(feature = "runtime-smol")]
 impl<S> AsyncRead for TlsStream<S>
 where
     S: AsyncRead + AsyncWrite + Unpin,
@@ -125,7 +125,7 @@ where
         self.with_context(ctx, |s| cvt(s.flush()))
     }
 
-    #[cfg(feature = "runtime-async-std")]
+    #[cfg(feature = "runtime-smol")]
     fn poll_close(mut self: Pin<&mut Self>, ctx: &mut Context<'_>) -> Poll<io::Result<()>> {
         match self.with_context(ctx, |s| s.shutdown()) {
             Ok(()) => Poll::Ready(Ok(())),
