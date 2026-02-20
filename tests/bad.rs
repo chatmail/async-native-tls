@@ -18,10 +18,9 @@ macro_rules! t {
 }
 
 cfg_if! {
-    if #[cfg(any(feature = "force-openssl",
-                        all(not(target_os = "macos"),
-                            not(target_os = "windows"),
-                            not(target_os = "ios"))))] {
+    if #[cfg(all(not(target_os = "macos"),
+                 not(target_os = "windows"),
+                 not(target_os = "ios")))] {
         fn verify_failed(err: &Error) {
             assert!(format!("{}", err).contains("certificate verify failed"))
         }

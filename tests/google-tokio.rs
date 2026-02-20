@@ -20,10 +20,9 @@ macro_rules! t {
 }
 
 cfg_if! {
-    if #[cfg(any(feature = "force-openssl",
-                        all(not(target_os = "macos"),
-                            not(target_os = "windows"),
-                            not(target_os = "ios"))))] {
+    if #[cfg(all(not(target_os = "macos"),
+                 not(target_os = "windows"),
+                 not(target_os = "ios")))] {
         fn assert_bad_hostname_error(err: &io::Error) {
             let err = err.get_ref().unwrap();
             let err = err.downcast_ref::<native_tls::Error>().unwrap();
