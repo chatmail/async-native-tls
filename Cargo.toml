@@ -16,7 +16,7 @@ categories = ["asynchronous", "cryptography", "network-programming"]
 
 [dependencies]
 native-tls = { version = "0.2.8", features = ["alpn"] }
-thiserror = "1.0.9"
+thiserror = "2.0.18"
 futures-util = { version = "0.3.1", features = ["io"], optional = true }
 tokio = { version = "1.0", default-features = false, features = ["io-util"], optional = true }
 url = "2.1.1"
