@@ -127,10 +127,9 @@ fn openssl_keys() -> &'static Keys {
 }
 
 cfg_if! {
-    if #[cfg(any(feature = "force-openssl",
-                        all(not(target_os = "macos"),
-                            not(target_os = "windows"),
-                            not(target_os = "ios"))))] {
+    if #[cfg(all(not(target_os = "macos"),
+                 not(target_os = "windows"),
+                 not(target_os = "ios")))] {
         use std::fs::File;
         use std::env;
         use std::sync::Once;
