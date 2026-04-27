@@ -57,6 +57,14 @@ $ cargo add async-native-tls
 
  * `runtime-tokio`: Use the `tokio` runtime. This is mutually exclusive with `runtime-smol`.
 
+ * `alpn-accept`: Enable server-side ALPN configuration via
+   `TlsAcceptor::new_with_alpn`. Note that the underlying `native-tls` crate
+   does not implement server-side ALPN on Apple platforms (Secure Transport
+   exposes no public API for it), so the configured protocols are silently
+   ignored there. Client-side ALPN (`TlsConnector::request_alpns` and
+   `TlsStream::negotiated_alpn`) is always available and not gated by this
+   feature.
+
 ## Example
 
 #### smol

@@ -72,6 +72,20 @@ impl<S> TlsStream<S> {
     {
         self.0.tls_server_end_point()
     }
+
+    /// Returns the protocol negotiated via ALPN, if any.
+    ///
+    /// Returns `Ok(None)` if no ALPN protocol was negotiated, including when
+    /// neither peer advertised a list. On Apple platforms this also returns
+    /// `Ok(None)` for server-side acceptors configured via
+    /// [`TlsAcceptor::new_with_alpn`](crate::TlsAcceptor::new_with_alpn),
+    /// since Secure Transport does not implement server-side ALPN.
+    pub fn negotiated_alpn(&self) -> crate::Result<Option<Vec<u8>>>
+    where
+        S: AsyncRead + AsyncWrite + Unpin,
+    {
+        self.0.negotiated_alpn()
+    }
 }
 
 #[cfg(feature = "runtime-smol")]

@@ -65,6 +65,41 @@ impl TlsAcceptor {
         Ok(TlsAcceptor(native_tls::TlsAcceptor::new(identity)?))
     }
 
+    /// Create a new TlsAcceptor that advertises the given ALPN protocols to clients.
+    ///
+    /// `protocols` is a server-preference-ordered list of ALPN identifiers (for
+    /// example `&["h2", "http/1.1"]`).
+    ///
+    /// # Platform support
+    ///
+    /// On Apple platforms, the underlying `native-tls` crate is built on
+    /// Secure Transport, which does not expose a server-side ALPN selection
+    /// API. The supplied protocols are silently ignored there — the handshake
+    /// proceeds without advertising an ALPN list and
+    /// [`TlsStream::negotiated_alpn`] will return `Ok(None)`. See
+    /// <https://github.com/rust-native-tls/rust-native-tls/issues/49>.
+    #[cfg(feature = "alpn-accept")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "alpn-accept")))]
+    pub async fn new_with_alpn<R, S, P>(
+        mut file: R,
+        password: S,
+        protocols: &[P],
+    ) -> Result<Self, Error>
+    where
+        R: AsyncRead + Unpin,
+        S: AsRef<str>,
+        P: AsRef<str>,
+    {
+        let mut identity = vec![];
+        file.read_to_end(&mut identity).await?;
+
+        let identity = native_tls::Identity::from_pkcs12(&identity, password.as_ref())?;
+        let acceptor = native_tls::TlsAcceptor::builder(identity)
+            .accept_alpn(protocols)
+            .build()?;
+        Ok(TlsAcceptor(acceptor))
+    }
+
     /// Accepts a new client connection with the provided stream.
     ///
     /// This function will internally call `TlsAcceptor::accept` to connect
@@ -130,6 +165,45 @@ mod tests {
             let connector = TlsConnector::new().danger_accept_invalid_certs(true);
 
             let mut stream = connector.connect("127.0.0.1", stream).await.unwrap();
+            let mut res = Vec::new();
+            stream.read_to_end(&mut res).await.unwrap();
+            assert_eq!(res, b"hello");
+        })
+    }
+
+    #[cfg(all(feature = "alpn-accept", not(target_vendor = "apple")))]
+    #[test]
+    fn test_acceptor_alpn() {
+        smol::block_on(async {
+            let key = File::open("tests/identity.pfx").await.unwrap();
+            let acceptor = TlsAcceptor::new_with_alpn(key, "hello", &["h2", "http/1.1"])
+                .await
+                .unwrap();
+            let listener = TcpListener::bind("127.0.0.1:8443").await.unwrap();
+            smol::spawn(async move {
+                let mut incoming = listener.incoming();
+                while let Some(stream) = incoming.next().await {
+                    let acceptor = acceptor.clone();
+                    let stream = stream.unwrap();
+                    smol::spawn(async move {
+                        let mut stream = acceptor.accept(stream).await.unwrap();
+                        stream.write_all(b"hello").await.unwrap();
+                    })
+                    .detach();
+                }
+            })
+            .detach();
+
+            let stream = TcpStream::connect("127.0.0.1:8443").await.unwrap();
+            let connector = TlsConnector::new()
+                .danger_accept_invalid_certs(true)
+                .request_alpns(&["h2"]);
+
+            let mut stream = connector.connect("127.0.0.1", stream).await.unwrap();
+            assert_eq!(
+                stream.negotiated_alpn().unwrap().as_deref(),
+                Some(&b"h2"[..])
+            );
             let mut res = Vec::new();
             stream.read_to_end(&mut res).await.unwrap();
             assert_eq!(res, b"hello");

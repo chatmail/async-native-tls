@@ -26,6 +26,9 @@ default = ["runtime-smol"]
 
 vendored = ["native-tls/vendored"]
 
+# Expose ALPN configuration on server-side `TlsAcceptor` (no-op on Apple platforms).
+alpn-accept = ["native-tls/alpn-accept"]
+
 # Runtime
 runtime-smol = ["futures-util"]
 runtime-tokio = ["tokio"]
