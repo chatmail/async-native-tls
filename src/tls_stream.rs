@@ -72,6 +72,14 @@ impl<S> TlsStream<S> {
     {
         self.0.tls_server_end_point()
     }
+
+    /// Returns the negotiated alpn channel binding data as defined in [RFC 5929](https://tools.ietf.org/html/rfc5929).
+    pub fn negotiated_alpn(&self) -> crate::Result<Option<Vec<u8>>>
+    where
+        S: AsyncRead + AsyncWrite + Unpin,
+    {
+        self.0.negotiated_alpn()
+    }    
 }
 
 #[cfg(feature = "runtime-smol")]
